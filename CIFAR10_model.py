@@ -3,6 +3,7 @@ import numpy as np
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
+import matplotlib.pyplot as plt
 from torchvision import datasets
 import torchvision.transforms as transforms
 from torch.utils.data.sampler import SubsetRandomSampler
@@ -174,7 +175,7 @@ def test():
         _, pred = torch.max(output, 1)    
         # compare predictions to true label
         correct_tensor = pred.eq(target.data.view_as(pred))
-        correct = np.squeeze(correct_tensor.to(device).numpy())
+        correct = np.squeeze(correct_tensor.cpu().numpy())
         # calculate test accuracy for each object class
         for i in range(batch_size):
             label = target.data[i]
@@ -197,9 +198,42 @@ def test():
         100. * np.sum(class_correct) / np.sum(class_total),
         np.sum(class_correct), np.sum(class_total)))
         
+def visualize():
+    # obtain one batch of test images
+    dataiter = iter(test_loader)
+    images, labels = dataiter.next()
+    images.numpy()
+
+    # move model inputs to cuda, if GPU available
+    images = images.to(device)
+
+    # get sample outputs
+    output = model(images)
+    # convert output probabilities to predicted class
+    _, preds_tensor = torch.max(output, 1)
+    preds = np.squeeze(preds_tensor.cpu().numpy())
+
+    images = images.cpu()
+
+    # plot the images in the batch, along with predicted and true labels
+    fig = plt.figure(figsize=(25, 4))
+    for idx in np.arange(20):
+        ax = fig.add_subplot(2, 10, idx+1, xticks=[], yticks=[])
+        imshow(images[idx].cpu())
+        ax.set_title("{} ({})".format(classes[preds[idx]], classes[labels[idx]]),
+                    color=("green" if preds[idx]==labels[idx].item() else "red"))
+    plt.show()
+        
+def imshow(img):
+    img = img / 2 + 0.5  # unnormalize
+    plt.imshow(np.transpose(img, (1, 2, 0)))  # convert from Tensor image
+
 # Uncomment if you want to train the model
-train()
+#train()
 model.load_state_dict(torch.load('model_cifar.pt'))
 
 # Uncomment if you want to test the model
 test()
+
+# Uncomment if you want to visualize the results
+visualize()
